@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Execute shell or lxc commands inside termina
+set -eu
+
+readonly CID="$(concierge_client \ --list_vms \ --cryptohome_id=$(ls /home/user -1 | head -zn1) 2> /dev/null \
+    | grep cid | sed -E 's/[^0-9]+//g')"
+
+[ -z "$CID" ] && {
+    echo "$0: failed to get CID, is VM running?"
+    exit 1
+}
+
+case "$(basename ${0})" in
+    lxc)
+        readonly CMD="lxc $*"
+    ;;
+
+    *)
+        readonly CMD="${*:-sh}"    
+    ;;
+esac
+
+command vsh --cid="${CID}" -- \
+    PATH=/opt/google/lxd-next/bin:/opt/google/lxd-next/usr/bin:/usr/local/bin:/usr/bin:/bin:/opt/bin \
+    LXD_CONF=/mnt/stateful/lxd_conf \
+    LXD_DIR=/mnt/stateful/lxd \
+    sh -c "${CMD}"
